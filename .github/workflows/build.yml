@@ -1,0 +1,85 @@
+name: BUILD
+
+on:
+  push:
+  schedule:
+    - cron:  '1 */8 * * *'
+
+jobs:
+  buildAUR:
+    strategy:
+      matrix:
+        repos: [visual-studio-code-bin]
+
+      fail-fast: false
+      
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: DuckSoft/build-aur-action@master
+      with:
+        repo-name: ${{ matrix.repos }}
+    
+    - uses: actions/upload-artifact@v2
+      with:
+        path: ${{ matrix.repos }}/*.pkg.tar.zst
+        name: ${{ matrix.repos }}
+        
+    - uses: ncipollo/release-action@v1
+      with:
+        allowUpdates: true
+        tag: "packages"
+        artifacts: "./*/*.zst"
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  buildNonAUR:
+    strategy:
+      matrix:
+        PKGBUILDs: [breeze10]
+
+      fail-fast: false
+      
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+#      - name: Build Non-AUR packages
+#        id: makepkg
+#        uses: edlanglois/pkgbuild-action@v1
+#        with:
+#          pkgdir: ${{ matrix.PKGBUILDs }}
+#          aurDeps: true
+#          
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          path: ${{ matrix.PKGBUILDs }}/*.pkg.tar.zst
+#          name: ${{ matrix.PKGBUILDs }}
+#      
+#      - uses: ncipollo/release-action@v1
+#        with:
+#          allowUpdates: true
+#          tag: "packages"
+#          artifacts: ${{ steps.makepkg.outputs.pkgfile0 }}
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          
+  uploadToOneDrive:      
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [buildAUR, buildNonAUR]
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - uses: actions/download-artifact@v2
+      
+      - uses: ./
+        with:
+          RCLONE_ONEDRIVE_CLIENT_ID: ${{ secrets.RCLONE_ONEDRIVE_CLIENT_ID }}
+          RCLONE_ONEDRIVE_CLIENT_SECRET: ${{ secrets.RCLONE_ONEDRIVE_CLIENT_SECRET }}
+          RCLONE_ONEDRIVE_REGION: global
+          RCLONE_ONEDRIVE_TOKEN: ${{ secrets.RCLONE_ONEDRIVE_TOKEN }}
+          RCLONE_ONEDRIVE_DRIVE_ID: ${{ secrets.RCLONE_ONEDRIVE_DRIVE_ID }}
+          RCLONE_ONEDRIVE_DRIVE_TYPE: personal
+          dest_path: /archrepo
+          repo_name: vifly
