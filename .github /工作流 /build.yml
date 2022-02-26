@@ -9,7 +9,7 @@ jobs:
   buildAUR:
     strategy:
       matrix:
-        repos: [visual-studio-code-bin]
+        repos: [visual-studio-code-bin, google-chrome, flashplayer-standalone-debug, flashplayer-standalone]
 
       fail-fast: false
       
